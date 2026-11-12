@@ -496,13 +496,26 @@ body.rsvp-open{overflow:hidden}
   addEventListener("hashchange", () => location.hash === "#rsvp" ? openRsvp(false) : closeRsvp(true));
   if (location.hash === "#rsvp" && body.classList.contains("opened")) openRsvp(false);
 
-  form.addEventListener("submit", e => {
+  // RSVPs are saved to the "Salma & Mohamed RSVPs" Google Sheet through this Apps Script web app.
+  const RSVP_URL = "https://script.google.com/macros/s/AKfycbx_uoIGGY-4RCFc6iZtNheg1WFbVKOTlgY8NrJIGaa8urIE7fYNpnWB2WoAAuJ0NKDDSA/exec";
+  const sendBtn = form.querySelector(".rsvp-send");
+  form.addEventListener("submit", async e => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(form));
     if (!d.name || !d.name.trim()) { err.textContent = "Please add your name."; form.elements.name.focus(); return; }
     if (!d.attending) { err.textContent = "Please let us know if you can attend."; return; }
     err.textContent = "";
-    // Sending is not connected yet: this only shows the guest a summary of their answers.
+    if (sendBtn.disabled) return;
+    const label = sendBtn.textContent;
+    sendBtn.disabled = true; sendBtn.textContent = "Sending…";
+    try {
+      await fetch(RSVP_URL, { method: "POST", mode: "no-cors", body: new URLSearchParams(d) });
+    } catch (x) {
+      err.textContent = "We couldn't send your RSVP. Please check your connection and try again.";
+      sendBtn.disabled = false; sendBtn.textContent = label;
+      return;
+    }
+    sendBtn.disabled = false; sendBtn.textContent = label;
     document.getElementById("doneName").textContent = ", " + d.name.trim().split(/\s+/)[0];
     document.getElementById("doneNote").textContent = d.attending === "yes"
       ? "We can't wait to celebrate with you." : "You'll be missed. Thank you for letting us know.";
